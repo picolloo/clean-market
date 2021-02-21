@@ -1,24 +1,35 @@
 import SignUpController from './signup';
 import { InvalidParamError, MissingParamError } from '../errors';
 import { EmailValidator } from '../validators';
+import { AddUser, AddUserModel } from '../../domain/useCases';
+import { UserModel } from '../../domain/models';
 
 interface SutTypes {
   sut: SignUpController;
   emailValidator: EmailValidator;
+  addUser: AddUser;
 }
 
-const makeSut = (): SutTypes => {
-  class EmailValidatorStub implements EmailValidator {
-    validate(_: string): boolean {
-      return true;
-    }
-  }
+const makeAddUserStub = (): AddUser => ({
+  execute: (user: AddUserModel): Promise<UserModel> =>
+    Promise.resolve({
+      ...user,
+      id: 'valid_id',
+    }),
+});
 
-  const emailValidatorStub = new EmailValidatorStub();
+const makeEmailValidatorStub = (): EmailValidator => ({
+  validate: (_: string): boolean => true,
+});
+
+const makeSut = (): SutTypes => {
+  const addUserStub = makeAddUserStub();
+  const emailValidatorStub = makeEmailValidatorStub();
 
   return {
-    sut: new SignUpController(emailValidatorStub),
+    sut: new SignUpController(emailValidatorStub, addUserStub),
     emailValidator: emailValidatorStub,
+    addUser: addUserStub,
   };
 };
 
@@ -76,5 +87,36 @@ describe('SignUp Controller', () => {
     const httpResponse = await sut.handle(httpRequest);
     expect(httpResponse.statusCode).toBe(400);
     expect(httpResponse.body).toEqual(new InvalidParamError('email'));
+  });
+
+  test('should call emailValidator with the given email', async () => {
+    const { sut, emailValidator } = makeSut();
+    const validateSpy = jest.spyOn(emailValidator, 'validate');
+
+    const httpRequest = {
+      body: {
+        name: 'name',
+        email: 'email',
+        password: 'password',
+      },
+    };
+    await sut.handle(httpRequest);
+    expect(validateSpy).toHaveBeenCalledWith(httpRequest.body.email);
+  });
+
+  test('should call AddUser with the given values', async () => {
+    const { sut, addUser } = makeSut();
+    const addUserSpy = jest.spyOn(addUser, 'execute');
+
+    const httpRequest = {
+      body: {
+        name: 'name',
+        email: 'email',
+        password: 'password',
+      },
+    };
+    const httpResponse = await sut.handle(httpRequest);
+    expect(httpResponse.statusCode).toBe(200);
+    expect(addUserSpy).toHaveBeenCalledWith(httpRequest.body);
   });
 });
