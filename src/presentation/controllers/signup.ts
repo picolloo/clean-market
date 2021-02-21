@@ -3,12 +3,16 @@ import { MissingParamError, InvalidParamError } from '../errors';
 import { Controller } from '../protocols/controller';
 import { HttpRequest, HttpResponse } from '../protocols/http';
 import { EmailValidator } from '../validators';
+import { AddUser } from '../../domain/useCases';
 
 export default class SignUpController implements Controller {
+  private readonly addUser: AddUser;
+
   private readonly emailValidator: EmailValidator;
 
-  constructor(emailValidator: EmailValidator) {
+  constructor(emailValidator: EmailValidator, addUser: AddUser) {
     this.emailValidator = emailValidator;
+    this.addUser = addUser;
   }
 
   handle = async (httpRequest: HttpRequest): Promise<HttpResponse> => {
@@ -20,16 +24,18 @@ export default class SignUpController implements Controller {
       }
     }
 
-    const { email } = httpRequest.body;
+    const { name, email, password } = httpRequest.body;
     const validEmail = this.emailValidator.validate(email);
 
     if (!validEmail) {
       return badRequest(new InvalidParamError('email'));
     }
 
+    const user = await this.addUser.execute({ name, email, password });
+
     return {
       statusCode: 200,
-      body: true,
+      body: user,
     };
   };
 }
