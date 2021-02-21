@@ -21,7 +21,12 @@
     "no-use-before-define": "off",
     "import/prefer-default-export": "off",
     "no-restricted-syntax": "off",
+    "class-methods-use-this": "off",
     "@typescript-eslint/no-use-before-define": ["error"],
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      { "argsIgnorePattern": "^_" }
+    ],
     "import/extensions": [
       "error",
       "ignorePackages",
