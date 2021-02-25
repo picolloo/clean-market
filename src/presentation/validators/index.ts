@@ -1,1 +1,1 @@
-export { default as EmailValidator } from './email';
+export * from './email';
