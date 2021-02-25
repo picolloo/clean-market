@@ -1,8 +1,7 @@
 import SignUpController from './signup';
-import { InvalidParamError, MissingParamError } from '../errors';
-import { EmailValidator } from '../validators';
-import { AddUser, AddUserModel } from '../../domain/useCases';
-import { UserModel } from '../../domain/models';
+import { InvalidParamError, MissingParamError } from '../../errors';
+import { AddUser, AddUserModel, EmailValidator } from './interfaces';
+import { badRequest, ok } from '../../helpers/http';
 
 interface SutTypes {
   sut: SignUpController;
@@ -11,7 +10,7 @@ interface SutTypes {
 }
 
 const makeAddUserStub = (): AddUser => ({
-  execute: (user: AddUserModel): Promise<UserModel> =>
+  execute: (user: AddUserModel) =>
     Promise.resolve({
       ...user,
       id: 'valid_id',
@@ -44,7 +43,7 @@ describe('SignUp Controller', () => {
     };
     const httpResponse = await sut.handle(httpRequest);
     expect(httpResponse.statusCode).toBe(400);
-    expect(httpResponse.body).toEqual(new MissingParamError('name'));
+    expect(httpResponse).toEqual(badRequest(new MissingParamError('name')));
   });
 
   test('should return statusCode 400 if no email is provided', async () => {
@@ -56,8 +55,7 @@ describe('SignUp Controller', () => {
       },
     };
     const httpResponse = await sut.handle(httpRequest);
-    expect(httpResponse.statusCode).toBe(400);
-    expect(httpResponse.body).toEqual(new MissingParamError('email'));
+    expect(httpResponse).toEqual(badRequest(new MissingParamError('email')));
   });
 
   test('should return statusCode 400 if no password is provided', async () => {
@@ -69,7 +67,6 @@ describe('SignUp Controller', () => {
       },
     };
     const httpResponse = await sut.handle(httpRequest);
-    expect(httpResponse.statusCode).toBe(400);
     expect(httpResponse.body).toEqual(new MissingParamError('password'));
   });
 
@@ -85,8 +82,7 @@ describe('SignUp Controller', () => {
       },
     };
     const httpResponse = await sut.handle(httpRequest);
-    expect(httpResponse.statusCode).toBe(400);
-    expect(httpResponse.body).toEqual(new InvalidParamError('email'));
+    expect(httpResponse).toEqual(badRequest(new InvalidParamError('email')));
   });
 
   test('should call emailValidator with the given email', async () => {
@@ -115,8 +111,26 @@ describe('SignUp Controller', () => {
         password: 'password',
       },
     };
-    const httpResponse = await sut.handle(httpRequest);
-    expect(httpResponse.statusCode).toBe(200);
+    await sut.handle(httpRequest);
     expect(addUserSpy).toHaveBeenCalledWith(httpRequest.body);
+  });
+
+  test('should return 200 when valid params are provided', async () => {
+    const { sut } = makeSut();
+
+    const httpRequest = {
+      body: {
+        name: 'name',
+        email: 'email',
+        password: 'password',
+      },
+    };
+    const httpResponse = await sut.handle(httpRequest);
+    expect(httpResponse).toEqual(
+      ok({
+        ...httpRequest.body,
+        id: 'valid_id',
+      }),
+    );
   });
 });
